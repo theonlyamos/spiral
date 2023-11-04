@@ -1,10 +1,11 @@
-import together 
-import logging
-from typing import Any, Dict, List, Mapping, Optional 
-from pydantic import Extra, Field, root_validator
-from dotenv import load_dotenv
-import sys
 import os
+import sys
+import logging
+import together 
+from llms.base import LLM
+from dotenv import load_dotenv
+from pydantic import Extra, Field, root_validator
+from typing import Any, Dict, List, Mapping, Optional 
 
 load_dotenv()
 
@@ -44,13 +45,13 @@ def cut_off_text(text, prompt):
     else:
         return text
 
-class TogetherLLM():
+class TogetherLLM(LLM):
     """Together large language models.""" 
     
     model: str = "togethercomputer/llama-2-70b-chat"
     """model endpoint to use""" 
 
-    together_api_key: str = os.environ["TOGETHER_API_KEY"]
+    api_key: str = os.environ["TOGETHER_API_KEY"]
     """Together API key""" 
 
     temperature: float = 0.1
@@ -60,15 +61,15 @@ class TogetherLLM():
     """The maximum number of tokens to generate in the completion.""" 
 
     class Config:
-        extra = 'alllow'
+        extra = 'allow'
     
     # @root_validator()
     # def validate_environment(cls, values: Dict) -> Dict:
     #     """Validate that the API key is set."""
     #     # api_key = get_from_dict_or_env(
-    #     #     values, "together_api_key", "TOGETHER_API_KEY"
+    #     #     values, "api_key", "TOGETHER_API_KEY"
     #     # )
-    #     values["together_api_key"] = cls.together_api_key
+    #     values["api_key"] = cls.api_key
     #     return values
     
     @property
@@ -83,16 +84,16 @@ class TogetherLLM():
     ) -> str:
         """Call to Together endpoint."""
         
-        together.api_key = self.together_api_key
+        together.api_key = self.api_key
         output = together.Complete.create(
             get_prompt(prompt),
             model=self.model,
             max_tokens=self.max_tokens,
             temperature=self.temperature,
         )
-        # text = output['output']['choices'][0]['text' ]
+        # text = output['output']['choices'][0]['text']
         
-        return output
+        return output['output']['choices'][0]['text']
 
 if __name__ == "__main__":
     try:
