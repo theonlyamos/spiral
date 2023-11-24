@@ -5,12 +5,12 @@ import logging
 from typing import Optional, List, Dict, Union
 from pydantic import BaseModel, Field
 
-from llms.base import LLM
-from tools.base import Tool
-from agents.templates import PROMPT_TEMPLATE
+from ..llms.base import LLM
+from ..tools.base import Tool
+from ..agents.templates import PROMPT_TEMPLATE
 
 logging.basicConfig(
-    format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
+    format='%(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
     datefmt='%d-%b-%y %H:%M:%S',
     level=logging.INFO
 )
@@ -23,7 +23,7 @@ class Agent(BaseModel):
     
     name: str = Field(default='Avatar')
     
-    llm: LLM = Field()
+    llm: LLM
     """Selected llm to use for agent"""
     
     tools: List[Tool] = Field(default=[])
@@ -31,7 +31,7 @@ class Agent(BaseModel):
     
     memory: List[Dict[str, str]] = []
     
-    PROMPT_TEMPLATE: Optional[str] = Field(default=PROMPT_TEMPLATE)
+    PROMPT_TEMPLATE: str = Field(default=PROMPT_TEMPLATE)
     """Base system prompt template"""
     
     def generate_prompt(self, query: str)->dict:
@@ -81,6 +81,7 @@ class Agent(BaseModel):
                 raise Exception('Not a json object')
             cb_last_index = response.rindex('}')
             cleaned_response = response[:cb_last_index+1]
+            # cleaned_response = cleaned_response.replace("\n", "\\n")
             response_data = json.loads(cleaned_response)
             
             final_result_keys = ['final_answer', 'function_call_result']
@@ -88,71 +89,78 @@ class Agent(BaseModel):
             if response_data['type'] in final_result_keys:
                 return response_data['result']
             tool = self.get_tool_by_name(response_data['function'])
+
             if not tool:
                 raise Exception(f'Tool {response_data["function"]} not found')
-            result = tool.run(*response_data['arguments'])
+            
+            # logger.info(f"Running function '{tool.name}' with parameters: {response_data['arguments']}")
+            if isinstance(response_data['arguments'], list):
+                result = tool.run(*response_data['arguments'])
+            else:
+                result = tool.run(response_data['arguments'])
+            
             response_json = {}
             response_json['type'] = 'function_call_result'
             response_json['result'] = result
             
             return response_json
         except Exception as e:
-            logger.warning(str(e))
+            # logger.warning(str(e))
             return response_data
     
-    def generate_response(self, response: str)->dict:
-        """_summary_
+    # def generate_response(self, response: str)->dict:
+    #     """_summary_
 
-        Args:
-            response (str): _description_
+    #     Args:
+    #         response (str): _description_
 
-        Returns:
-            str: _description_
-        """
+    #     Returns:
+    #         str: _description_
+    #     """
         
-        self.memory.append({'AI Assistant': response})
+    #     self.memory.append({'AI Assistant': response})
 
-        try:
-            result = {}
-            response = response.strip()
-            for line in response.splitlines():
-                r_line = line.split(":")
-                if len(r_line) > 1:
-                    r_key = r_line[0].strip().rstrip('"').lstrip('"').rstrip("'").lstrip("'")
-                    r_value = r_line[1].strip().rstrip('"').lstrip('"').rstrip("'").lstrip("'").rstrip(",").rstrip('"')
-                    result[r_key] = r_value
+    #     try:
+    #         result = {}
+    #         response = response.strip()
+    #         for line in response.splitlines():
+    #             r_line = line.split(":")
+    #             if len(r_line) > 1:
+    #                 r_key = r_line[0].strip().rstrip('"').lstrip('"').rstrip("'").lstrip("'")
+    #                 r_value = r_line[1].strip().rstrip('"').lstrip('"').rstrip("'").lstrip("'").rstrip(",").rstrip('"')
+    #                 result[r_key] = r_value
 
-            if result['action']:
-                action_tool = self.get_tool_by_name(result['action'])
-                if action_tool:
-                    tool = action_tool['execute']
-                    if result['action_input']:
-                        output = tool(result['action_input'])
-                    else:
-                        output= tool()
+    #         if result['action']:
+    #             action_tool = self.get_tool_by_name(result['action'])
+    #             if action_tool:
+    #                 tool = action_tool['execute']
+    #                 if result['action_input']:
+    #                     output = tool(result['action_input'])
+    #                 else:
+    #                     output= tool()
                     
-                    return {
-                        'type': 'tool_usage',
-                        'user_name': result['action'],
-                        'output': f"The answer from {result['action']} is {output}",
-                        'is_final': False
-                    }
-            return {
-                'type': 'response',
-                'user_name': 'ChatBot',
-                'output': result['final_answer'],
-                'is_final': True
-            }
-        except Exception as e:
-            logger.exception(str(e))
-            return {
-                'type': 'response',
-                'user_name': 'ChatBot',
-                'output': str(e),
-                'is_final': True
-            }
+    #                 return {
+    #                     'type': 'tool_usage',
+    #                     'user_name': result['action'],
+    #                     'output': f"The answer from {result['action']} is {output}",
+    #                     'is_final': False
+    #                 }
+    #         return {
+    #             'type': 'response',
+    #             'user_name': 'ChatBot',
+    #             'output': result['final_answer'],
+    #             'is_final': True
+    #         }
+    #     except Exception as e:
+    #         logger.exception(str(e))
+    #         return {
+    #             'type': 'response',
+    #             'user_name': 'ChatBot',
+    #             'output': str(e),
+    #             'is_final': True
+    #         }
     
-    def add_tool(self, tool: Dict):
+    def add_tool(self, tool: Tool):
         """Adds an additional tool to this LLM object"""
         self.tools.append(tool)
     
@@ -186,10 +194,10 @@ class Agent(BaseModel):
                 if query in ['exit', 'quit']:
                     print('Exiting...')
                     sys.exit(1)
-
+                
                 full_prompt = self.generate_prompt(query)
                 # print(full_prompt['output'])
-                response = self.llm(full_prompt['output'])
+                response = self.llm(full_prompt['output']) # type: ignore
                 self.memory.append({'AI Assistant': response})
                 
                 result = self.process_response(response)

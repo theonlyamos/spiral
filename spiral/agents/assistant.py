@@ -1,6 +1,6 @@
-from agents.base import Agent
 from pydantic import Field
-from agents.templates import ASSISTANT_TEMPLATE
+from ..agents.base import Agent
+from ..agents.templates import ASSISTANT_TEMPLATE
 
 class AIAssistant(Agent):
     """_summary_

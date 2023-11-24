@@ -1,5 +1,5 @@
 import cohere
-from llms.base import LLM
+from ..llms.base import LLM
 from typing import Any, Optional
 from dotenv import load_dotenv
 import logging
@@ -47,25 +47,25 @@ calculator = {
     'execute': evaluate_ast,
 }
 
-class Choral(LLM):
-    """A class for interacting with the Choral API.
+class Coral(LLM):
+    """A class for interacting with the Coral API.
 
     Args:
-        model: The name of the Choral model to use.
+        model: The name of the Coral model to use.
         temperature: The temperature to use when generating text.
-        api_key: Your Choral API key.
+        api_key: Your Coral API key.
     """
     model: str = 'command-nightly'
     temperature: float = 0.1
     chat_history: list[str] = []
-    api_key: Optional[str] = os.getenv('COHERE_API_KEY')
+    api_key: str = os.getenv('COHERE_API_KEY', '')
 
     def __call__(self, query, **kwds: Any)->str:
-        """Generates a response to a query using the Choral API.
+        """Generates a response to a query using the Coral API.
 
         Args:
         query: The query to generate a response to.
-        kwds: Additional keyword arguments to pass to the Choral API.
+        kwds: Additional keyword arguments to pass to the Coral API.
 
         Returns:
         A string containing the generated response.
@@ -86,8 +86,8 @@ class Choral(LLM):
     
 if __name__ == "__main__":
     try:
-        assistant = Choral()
-        assistant.add_tool(calculator)
+        assistant = Coral()
+        # assistant.add_tool(calculator)
         while True:
             message = input("\nEnter Query$ ")
             result = assistant(message)

@@ -15,6 +15,9 @@ class Tool(BaseModel):
     description: str
     """Description of what the tool does and how to use it"""
     
+    class Config:
+        arbitrary_types_allowed = True
+    
     def run(self, *args, **kwargs):
         """Here is where you code what the tool does"""
         pass
