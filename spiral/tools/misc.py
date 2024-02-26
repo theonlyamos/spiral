@@ -1,9 +1,11 @@
+import shutil
 from webbrowser import open_new_tab
 from typing import Union, Optional, Any, Tuple, Dict, List
 from webbrowser import open_new_tab
 from ..tools.base import Tool
 from pydantic import Field
 from serpapi import google_search
+from pathlib import Path
 import requests
 import logging 
 import aiohttp
@@ -196,7 +198,8 @@ class FSBrowser(Tool):
     :param content: (Optional) Content to write to file
     """
     
-    def run(self, path: str, operation: str, filename: Optional[str] = None, content: Optional[str] = None):
+    def run(self, path: str | Path, operation: str, filename: Optional[str] = None, content: Optional[str] = None):
+        path = Path(path).resolve()
         operations = {
             'open': self.execute,
             'list': self.listdir,
@@ -206,6 +209,7 @@ class FSBrowser(Tool):
             'write': self.write_file,
             'delete': self.delete_path
         }
+        
         if operation in ['write', 'create']:
             return operations[operation](path, filename, content)
         elif operation == 'open':
@@ -215,36 +219,38 @@ class FSBrowser(Tool):
     def arun(self, url: str):
         raise NotImplementedError(NotImplementedErrorMessage)
     
-    def execute(self, path: str, filename: Optional[str])->bool:
-        if filename and os.path.exists(os.path.join(path, filename)):
-            os.startfile(os.path.join(path, filename))
-            return True
+    def execute(self, path: Path, filename: Optional[str])->str:
+        if filename and path.joinpath(filename).exists():
+            os.startfile(path.joinpath(filename))
+            return 'Successfully opened file'
         elif os.path.exists(path):
             os.startfile(path)
-            return True
-        return False
+            return 'Successfully opened folder'
+        return 'Unable to open file'
         
-    def listdir(self, path: str):
+    def listdir(self, path: Path):
         return os.listdir(path)
     
-    def create_path(self, path: str):
-        if os.path.isfile(path):
-            with open(path, 'wt') as file:
+    def create_path(self, path: Path):
+        if path.is_file():
+            with path.open('wt') as file:
                 return file
-        return os.mkdir(path)
+        return path.mkdir()
     
-    def read_path(self, path: str):
-        if os.path.isfile(path):
-            with open(path, 'rt') as file:
+    def read_path(self, path: Path):
+        if path.is_file():
+            with path.open('rt') as file:
                 return file.read()
         return os.listdir(path)
     
-    def write_file(self, path: str, filename: str, content: str):
-        with open(os.path.join(path, filename), 'w') as file:
+    def write_file(self, path: Path, filename: str, content: str):
+        with path.joinpath(filename).open('wt') as file:
             return file.write(content)
     
-    def delete_path(self, path: str):
-        return os.unlink(path)
+    def delete_path(self, path: Path):
+        if path.is_file():
+            return path.unlink()
+        return shutil.rmtree(path)
     
 class SearchTool(Tool):
     """Wrapper around SerpAPI.

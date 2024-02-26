@@ -58,7 +58,7 @@ class Coral(LLM):
     model: str = 'command-nightly'
     temperature: float = 0.1
     chat_history: list[str] = []
-    api_key: str = os.getenv('COHERE_API_KEY', '')
+    api_key: str = os.getenv('CO_API_KEY', '')
 
     def __call__(self, query, **kwds: Any)->str:
         """Generates a response to a query using the Coral API.

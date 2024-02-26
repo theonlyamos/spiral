@@ -31,8 +31,11 @@ class Agent(BaseModel):
     
     memory: List[Dict[str, str]] = []
     
-    PROMPT_TEMPLATE: str = Field(default=PROMPT_TEMPLATE)
+    promp_template: str = Field(default=PROMPT_TEMPLATE)
     """Base system prompt template"""
+    
+    verbose: bool = Field(default=False)
+    """Verbose mode flag"""
     
     def generate_prompt(self, query: str)->dict:
         """Generates a prompt from a query and a dictionary of tools.
@@ -47,7 +50,7 @@ class Agent(BaseModel):
         tools_str = "\n".join([f"{tool.name}: {tool.description}" for tool in self.tools])
         available_tools = [tool.name for tool in self.tools]
         
-        prompt = self.PROMPT_TEMPLATE
+        prompt = self.promp_template
         prompt = prompt.replace("{name}", self.name)
         # prompt = prompt.replace("{query}", query)
         prompt = prompt.replace("{tools}", tools_str)
@@ -76,34 +79,37 @@ class Agent(BaseModel):
         response = response.strip()
         response_data = response
         try:
-
-            if not response.startswith('{'):
-                raise Exception('Not a json object')
-            cb_last_index = response.rindex('}')
-            cleaned_response = response[:cb_last_index+1]
-            # cleaned_response = cleaned_response.replace("\n", "\\n")
-            response_data = json.loads(cleaned_response)
-            
-            final_result_keys = ['final_answer', 'function_call_result']
-            
-            if response_data['type'] in final_result_keys:
-                return response_data['result']
-            tool = self.get_tool_by_name(response_data['function'])
-
-            if not tool:
-                raise Exception(f'Tool {response_data["function"]} not found')
-            
-            # logger.info(f"Running function '{tool.name}' with parameters: {response_data['arguments']}")
-            if isinstance(response_data['arguments'], list):
-                result = tool.run(*response_data['arguments'])
+            if response.startswith('{') or response.startswith('```json'):
+                if response.startswith('```json'):
+                    response = "\n".join(response.splitlines()[1:-1]).replace("\\", "\\\\")
+                cb_last_index = response.rindex('}')
+                cleaned_response = response[:cb_last_index+1]
+                # cleaned_response = cleaned_response.replace("\n", "\\n")
+                response_data = json.loads(cleaned_response)
+                
+                final_result_keys = ['final_answer', 'function_call_result']
+                
+                if response_data['type'] in final_result_keys:
+                    return response_data['result']
+                tool = self.get_tool_by_name(response_data['function'])
+                
+                if not tool:
+                    raise Exception(f'Tool {response_data["function"]} not found')
+                
+                if self.verbose:
+                    logger.info(f"Running function '{tool.name}' with parameters: {response_data['arguments']}")
+                if isinstance(response_data['arguments'], list):
+                    result = tool.run(*response_data['arguments'])
+                else:
+                    result = tool.run(response_data['arguments'])
+                
+                response_json = {}
+                response_json['type'] = 'function_call_result'
+                response_json['result'] = result
+                
+                return response_json
             else:
-                result = tool.run(response_data['arguments'])
-            
-            response_json = {}
-            response_json['type'] = 'function_call_result'
-            response_json['result'] = result
-            
-            return response_json
+                raise Exception('Not a json object')
         except Exception as e:
             # logger.warning(str(e))
             return response_data
@@ -188,24 +194,28 @@ class Agent(BaseModel):
         """
         Initialize the llm
         """
-        query = input("\nUser: ")
-        while True:
+        query = input("\nUser (q to quit): ")
+        while query:
             try:
-                if query in ['exit', 'quit']:
+                if query in ['q', 'quit']:
                     print('Exiting...')
                     sys.exit(1)
                 
                 full_prompt = self.generate_prompt(query)
                 # print(full_prompt['output'])
                 response = self.llm(full_prompt['output']) # type: ignore
+                if self.verbose:
+                    print(response)
                 self.memory.append({'AI Assistant': response})
                 
                 result = self.process_response(response)
+
                 if isinstance(result, dict) and result['type'] == 'function_call_result':
                     query = json.dumps(result)
                 else:
-                    print(result)
-                    query = input("\nUser: ")
+                    print(f"\n{self.name}: {result}")
+                    query = input("\nUser (q to quit): ")
+                    
             except KeyboardInterrupt:
                 print('Exiting...')
                 sys.exit(1)

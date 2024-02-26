@@ -51,7 +51,7 @@ class TogetherLLM(LLM):
     model: str = "togethercomputer/llama-2-70b-chat"
     """model endpoint to use""" 
 
-    api_key: str = os.environ["TOGETHER_API_KEY"]
+    api_key: str = os.getenv("TOGETHER_API_KEY", "")
     """Together API key""" 
 
     temperature: float = 0.1
@@ -93,7 +93,8 @@ class TogetherLLM(LLM):
         )
         # text = output['output']['choices'][0]['text']
         
-        return output['output']['choices'][0]['text']
+        # return output['output']['choices'][0]['text']
+        return response
 
 if __name__ == "__main__":
     try:

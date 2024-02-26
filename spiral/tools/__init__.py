@@ -1,4 +1,5 @@
 from ..tools.base import Tool
+from ..tools.tool import tool
 from ..tools.misc import (
     Calculator, YoutubePlayer,
     WorldNews, FSBrowser,
