@@ -31,7 +31,7 @@ class Agent(BaseModel):
     
     memory: List[Dict[str, str]] = []
     
-    promp_template: str = Field(default=PROMPT_TEMPLATE)
+    prompt_template: str = Field(default=PROMPT_TEMPLATE)
     """Base system prompt template"""
     
     verbose: bool = Field(default=False)
@@ -50,7 +50,7 @@ class Agent(BaseModel):
         tools_str = "\n".join([f"{tool.name}: {tool.description}" for tool in self.tools])
         available_tools = [tool.name for tool in self.tools]
         
-        prompt = self.promp_template
+        prompt = self.prompt_template
         prompt = prompt.replace("{name}", self.name)
         # prompt = prompt.replace("{query}", query)
         prompt = prompt.replace("{tools}", tools_str)

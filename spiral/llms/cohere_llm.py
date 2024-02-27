@@ -1,5 +1,5 @@
 import cohere
-from ..llms.base import LLM
+from spiral.llms.base import LLM
 from typing import Any, Optional
 from dotenv import load_dotenv
 import logging
