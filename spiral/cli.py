@@ -4,7 +4,7 @@ import argparse
 from argparse import Namespace
 
 from spiral.llms import (
-    Coral, 
+    Coral, GPT4,
     load_llm,
     list_llms
 )
@@ -22,14 +22,19 @@ from .config import VERSION
 def start(args: Namespace):
     try:
         if args.models:
-            print(list_llms())
+            print("\nAvailable Models:")
+            for index, l in enumerate(list_llms()):
+                print(f"[{index+1}] {l}")
             sys.exit()
         llm = None
         if args.llm:
-            llm = load_llm(args.llm)
+            llm = load_llm(model_name=args.llm)
         llm = llm() if llm else Coral()
+        if args.api_key:
+            llm.api_key = args.api_key
         # llm = TogetherLLM()
         assistant = AIAssistant(llm=llm, name=args.name, verbose=args.verbose)
+        
         assistant.add_tool(Calculator())
         assistant.add_tool(YoutubePlayer())
         assistant.add_tool(WorldNews())

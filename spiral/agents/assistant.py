@@ -8,4 +8,4 @@ class AIAssistant(Agent):
     Args:
         Agent (_type_): _description_
     """
-    promp_template: str = Field(default=ASSISTANT_TEMPLATE)
+    prompt_template: str = Field(default=ASSISTANT_TEMPLATE)

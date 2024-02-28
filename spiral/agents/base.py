@@ -7,12 +7,14 @@ from pydantic import BaseModel, Field
 
 from ..llms.base import LLM
 from ..tools.base import Tool
+from ..tasks.base import Task
+from ..llms.actions import load_llm, list_llms
 from ..agents.templates import PROMPT_TEMPLATE
 
 logging.basicConfig(
     format='%(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
     datefmt='%d-%b-%y %H:%M:%S',
-    level=logging.INFO
+    level=logging.WARNING
 )
 logger = logging.getLogger('spiral.log')
 
@@ -36,6 +38,15 @@ class Agent(BaseModel):
     
     verbose: bool = Field(default=False)
     """Verbose mode flag"""
+    
+    sub_agents: List['Agent'] = Field(default=[])
+    """Sub agents that can be called by this agent"""
+    
+    task: Optional[Task] = None
+    """Current task assigned to the agent"""
+    
+    is_sub_agent:  bool = Field(default=False)
+    """Flag indicating if agent is a sub agent"""
     
     def generate_prompt(self, query: str)->dict:
         """Generates a prompt from a query and a dictionary of tools.
@@ -69,6 +80,10 @@ class Agent(BaseModel):
             'is_final': False
         }
     
+    def add_sub_agent(self, agent: 'Agent'):
+        """Adds a sub agent to the list of sub agents"""
+        self.sub_agents.append(agent)
+    
     def get_tool_by_name(self, name: str)-> Optional[Tool]:
         for tool in self.tools:
             if tool.name.lower() == name.lower():
@@ -77,31 +92,26 @@ class Agent(BaseModel):
     
     def process_response(self, response: str)-> Union[dict, str]:
         response = response.strip()
-        response_data = response
+        # response = response.replace("\\", "\\\\")
+        response_data = self.extract_json(response)
+        
         try:
-            if response.startswith('{') or response.startswith('```json'):
-                if response.startswith('```json'):
-                    response = "\n".join(response.splitlines()[1:-1]).replace("\\", "\\\\")
-                cb_last_index = response.rindex('}')
-                cleaned_response = response[:cb_last_index+1]
-                # cleaned_response = cleaned_response.replace("\n", "\\n")
-                response_data = json.loads(cleaned_response)
-                
+            if isinstance(response_data, dict):
                 final_result_keys = ['final_answer', 'function_call_result']
                 
-                if response_data['type'] in final_result_keys:
-                    return response_data['result']
-                tool = self.get_tool_by_name(response_data['function'])
+                if response_data['type'] in final_result_keys: # type: ignore
+                    return response_data['result'] # type: ignore
+                tool = self.get_tool_by_name(response_data['function']) # type: ignore
                 
                 if not tool:
-                    raise Exception(f'Tool {response_data["function"]} not found')
+                    raise Exception(f'Tool {response_data["function"]} not found') # type: ignore
                 
                 if self.verbose:
-                    logger.info(f"Running function '{tool.name}' with parameters: {response_data['arguments']}")
-                if isinstance(response_data['arguments'], list):
-                    result = tool.run(*response_data['arguments'])
+                    logger.info(f"Running function '{tool.name}' with parameters: {response_data['arguments']}") # type: ignore
+                if isinstance(response_data['arguments'], list): # type: ignore
+                    result = tool.run(*response_data['arguments']) # type: ignore
                 else:
-                    result = tool.run(response_data['arguments'])
+                    result = tool.run(response_data['arguments']) # type: ignore
                 
                 response_json = {}
                 response_json['type'] = 'function_call_result'
@@ -111,7 +121,7 @@ class Agent(BaseModel):
             else:
                 raise Exception('Not a json object')
         except Exception as e:
-            # logger.warning(str(e))
+            logger.warning(str(e))
             return response_data
     
     # def generate_response(self, response: str)->dict:
@@ -166,6 +176,31 @@ class Agent(BaseModel):
     #             'is_final': True
     #         }
     
+    def extract_json(self, content: str) -> dict | str:
+        """Extract json content from response string
+
+        Args:
+            content (str): The response string to extract json from
+
+        Returns:
+            dict|str: Result of the extraction
+        """
+        try:
+            # Find the start and end index of the JSON string
+            start_index = content.find('{')
+            end_index = content.find('}', start_index) + 1
+            
+            # Extract the JSON string
+            json_str = content[start_index:end_index]
+            
+            # Convert the JSON string to a Python dictionary
+            json_dict = json.loads(json_str)
+            
+            return json_dict
+        except Exception as e:
+            logger.warning(str(e))
+            return content
+    
     def add_tool(self, tool: Tool):
         """Adds an additional tool to this LLM object"""
         self.tools.append(tool)
@@ -197,9 +232,33 @@ class Agent(BaseModel):
         query = input("\nUser (q to quit): ")
         while query:
             try:
-                if query in ['q', 'quit']:
+                if query.lower() in ['q', 'quit', 'exit']:
                     print('Exiting...')
                     sys.exit(1)
+                elif query.lower() == 'add agent':
+                    agent_name = input("\n[Enter agent name]: ")
+                    agent_task = input("\n[Enter brief description of agent task]: ")
+                    llms = list_llms()
+                    llms_str = "\nAvailable LLMs:"
+                    for index, llm in enumerate(llms):
+                        llms_str += (f"\n[{index}] {llm}")
+                    print(llms_str)
+                    agent_llm = int(input("\n[Select LLM]: "))
+                    selected_llm = llms[agent_llm]
+                    llm = load_llm(selected_llm)
+                    new_agent = Agent.create_agent(agent_name, llm(), agent_task) # type: ignore
+                    self.add_sub_agent(new_agent)
+                    print(f"\nAgent {agent_name} added successfully!")
+                    
+                    query = input("\nUser (q to quit): ")
+                    continue
+                elif query.lower() == 'list agents':
+                    agents_str = "\nAvailable Agents:"
+                    for index, agent in enumerate(self.sub_agents):
+                        agents_str += (f"\n[{index}] {agent.name}")
+                    print(agents_str)
+                    query = input("\nUser (q to quit): ")
+                    continue
                 
                 full_prompt = self.generate_prompt(query)
                 # print(full_prompt['output'])
@@ -229,3 +288,17 @@ class Agent(BaseModel):
         task = asyncio.run(self.initialize())
 
         return task
+    
+    @classmethod
+    def create_agent(cls, name: str, llm: LLM, task_description: str, tools: List[Tool] = [], is_sub_agent: bool = True):
+        """Create a new sub -agent instance
+
+        Args:
+            name (str): Name of the agent
+            llm (LLM): LLM instance
+            task (Task): Task instance
+            tools (List[Tool], optional): List of tools available to the agent. Defaults to [].
+            is_sub_agent (bool, optional): Set whether agent is a sub_agent. Defaults to True.
+        """
+        task = Task(description=task_description)
+        return cls(name=name, llm=llm,task=task, tools=tools, is_sub_agent=is_sub_agent)

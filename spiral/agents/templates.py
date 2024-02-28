@@ -88,7 +88,7 @@ Stepback Question: Who were the spouses of Anna Karina?
 Original Question: Which team did Thierry Audel play for from 2007 to 2008?
 Stepback Question: Which teams did Thierry Audel play for in his career?
 
-Remember, functions calls will be processed by the user and the result returned to the AI Asssistant the the next input.
+Remember, functions calls will be processed by the user and the result returned to the AI Asssistant as the next input.
 A function name is a name of a tool available to the AI Assistant.
 Whenever there is a function call, always wait for the answer from the user. Do not try to answer that query yourself.
 Only call tools available to the AI Assistant.
@@ -118,14 +118,11 @@ The response should be in a valid json format which can
 be directed converted into a python dictionary with 
 json.loads()
 Return the response in the following format only:
-```json
 {
   "type": "final_answer",
   "result": "
 }
-
 if it's the final anwers or
-```json
 {
   "type": "function_call",
   "function": "",

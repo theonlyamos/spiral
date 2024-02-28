@@ -1,51 +1,36 @@
-from typing import Optional
+from typing import Optional, Callable
+from pydantic import BaseModel
 import asyncio
 
-class Task:
-    def __init__(self, func, *args, **kwargs):
-        self.func = func
-        self.args = args
-        self.kwargs = kwargs
-        self.task = None
+class Task(BaseModel):
+    """
+    Initializes the Task object by assigning values to its attributes.
 
+    Args:
+        func (function): The function to be executed by the task.
+        args (tuple): The positional arguments to be passed to the function.
+        kwargs (dict): The keyword arguments to be passed to the function.
+
+    Returns:
+        None
+    """
+    
+    description: str
+    func: Optional[Callable] = None
+    done: bool = False
+    
     async def start(self):
-        self.task = asyncio.create_task(self.func(*self.args, **self.kwargs))
+        if self.func:
+            self.task = asyncio.create_task(self.func())
 
     async def join(self):
         if self.task:
             await self.task
         else:
             print("Task not started yet")
-
+    
     async def cancel(self):
         if self.task:
             self.task.cancel()
         else:
             print("Task not started yet")
-
-class Agent:
-    
-    # existing Agent code
-
-    task: Optional[Task] = None
-
-    def start_task(self, func, *args, **kwargs):
-        self.task = Task(func, *args, **kwargs)
-
-    async def run_task(self):
-        if self.task:
-            await self.task.start()
-        else:
-            print("No task set")
-
-    async def stop_task(self):
-        if self.task:
-            await self.task.cancel()
-        else:
-            print("No task running")
-
-    async def wait_task(self):
-        if self.task:
-            await self.task.join()
-        else:
-            print("No task set")

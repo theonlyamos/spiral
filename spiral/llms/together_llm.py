@@ -48,7 +48,7 @@ def cut_off_text(text, prompt):
 class TogetherLLM(LLM):
     """Together large language models.""" 
     
-    model: str = "togethercomputer/llama-2-70b-chat"
+    model: str = "mistralai/Mixtral-8x7B-Instruct-v0.1"
     """model endpoint to use""" 
 
     api_key: str = os.getenv("TOGETHER_API_KEY", "")
@@ -92,9 +92,8 @@ class TogetherLLM(LLM):
             temperature=self.temperature,
         )
         # text = output['output']['choices'][0]['text']
-        
-        # return output['output']['choices'][0]['text']
-        return response
+
+        return output['output']['choices'][0]['text']   # type: ignore
 
 if __name__ == "__main__":
     try:

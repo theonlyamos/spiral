@@ -6,7 +6,7 @@ import json
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
     datefmt='%d-%b-%y %H:%M:%S',
-    level=logging.INFO
+    level=logging.WARNING
 )
 logger = logging.getLogger('spiral.log')
 
@@ -93,4 +93,3 @@ class LLM(BaseModel):
     
     max_tokens: int = Field(default=512)
     """The maximum number of tokens to generate in the completion.""" 
-
