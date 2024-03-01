@@ -34,7 +34,8 @@ def start(args: Namespace):
             platform.api_key = args.api_key
         if args.model:
             platform.model = args.model
-            
+        
+        platform.temperature = args.temperature
         # llm = TogetherLLM()
         assistant = AIAssistant(llm=platform, name=args.name, verbose=args.verbose)
         
@@ -54,11 +55,12 @@ def start(args: Namespace):
 def get_arguments():
     global parser
 
-    parser.add_argument('--name', default='Adam', help='Set name of agent')
+    parser.add_argument('--name', type=str, default='Adam', help='Set name of agent')
     parser.add_argument('--platform', default='', help='Set llm platform to use')
     parser.add_argument('--platforms', action='store_true', help='Get a list of all supported platforms')
-    parser.add_argument('--model', default='', help='Specify model or model_url to use')
-    parser.add_argument('--api-key', default='', help='Set api key of selected llm')
+    parser.add_argument('--model', type=str, default='', help='Specify model or model_url to use')
+    parser.add_argument('--api-key', type=str, default='', help='Set api key of selected llm')
+    parser.add_argument('--temperature', type=float, default=0.1, help='Set temperature of model')
     parser.add_argument('--verbose', action='store_true', help='Set verbose mode')
     parser.add_argument('-v','--version', action='version', version=f'%(prog)s {VERSION}')
     parser.set_defaults(func=start)
