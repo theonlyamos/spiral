@@ -104,7 +104,7 @@ class Agent(BaseModel):
             if isinstance(response_data, dict):
                 final_result_keys = ['final_answer', 'function_call_result']
                 
-                if response_data['type'] in final_result_keys: # type: ignore
+                if response_data['type'].replace('\\', '') in final_result_keys: # type: ignore
                     return response_data['result'] # type: ignore
                 tool = self.get_tool_by_name(response_data['function']) # type: ignore
                 
@@ -126,7 +126,7 @@ class Agent(BaseModel):
             else:
                 raise Exception('Not a json object')
         except Exception as e:
-            logger.warning(str(e))
+            # logger.warning(str(e))
             return response_data
     
     # def generate_response(self, response: str)->dict:
