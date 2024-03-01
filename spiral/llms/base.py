@@ -93,3 +93,9 @@ class LLM(BaseModel):
     
     max_tokens: int = Field(default=512)
     """The maximum number of tokens to generate in the completion.""" 
+    
+    supports_system_prompt: bool = Field(default=False)
+    """Whether the model supports system prompts."""
+    
+    system_prompt: str = Field(default='')
+    """System prompt to use for context."""

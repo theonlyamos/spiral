@@ -15,57 +15,32 @@ logging.basicConfig(
 logger = logging.getLogger('spiral.log')
 load_dotenv()
 
-def evaluate_ast(node):
-    logger.info(node)
-    if isinstance(node, ast.Num):
-        return node.n
-    elif isinstance(node, ast.BinOp):
-        left = evaluate_ast(node.left)
-        right = evaluate_ast(node.right)
-        op = node.op
-        if op == ast.Add:
-            return left + right
-        elif op == ast.Sub:
-            return left - right
-        elif op == ast.Mult:
-            return left * right
-        elif op == ast.Div:
-            return left / right
-        else:
-            raise Exception('Unsupported operator: {}'.format(op))
-
-calculator = {
-    'name': 'Calculator',
-    'description':
-      """Useful for getting the result of a math expression.
-      The input to this tool should be a valid mathematical expression that could be executed by a simple calculator.
-      The code will be executed in a python environment so the input should be in a format it can be executed.
-      
-      Example:
-      User: what is the square root of 25?
-      action_input: 25**(1/2)""",
-    'execute': evaluate_ast,
-}
-
-class Coral(LLM):
-    """A class for interacting with the Coral API.
+class Cohere(LLM):
+    """A class for interacting with the Cohere API.
 
     Args:
-        model: The name of the Coral model to use.
+        model: The name of the Cohere model to use.
         temperature: The temperature to use when generating text.
-        api_key: Your Coral API key.
+        api_key: Your Cohere API key.
     """
     model: str = 'command-nightly'
+    """model endpoint to use""" 
+    
     temperature: float = 0.1
+    """What sampling temperature to use.""" 
+    
     chat_history: list[str] = []
+    """Chat history"""
+    
     api_key: str = os.getenv('CO_API_KEY', '')
+    """Cohere API key""" 
 
     def __call__(self, query, **kwds: Any)->str:
-        """Generates a response to a query using the Coral API.
+        """Generates a response to a query using the Cohere API.
 
         Args:
         query: The query to generate a response to.
-        kwds: Additional keyword arguments to pass to the Coral API.
+        kwds: Additional keyword arguments to pass to the Cohere API.
 
         Returns:
         A string containing the generated response.
@@ -86,7 +61,7 @@ class Coral(LLM):
     
 if __name__ == "__main__":
     try:
-        assistant = Coral()
+        assistant = Cohere()
         # assistant.add_tool(calculator)
         while True:
             message = input("\nEnter Query$ ")

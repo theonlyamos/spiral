@@ -1,5 +1,5 @@
-from llms import TogetherLLM
-from llms import Coral
+from llms import Together
+from llms import Cohere
 from agents import AIAssistant
 from tools import (
     Calculator, YoutubePlayer,
@@ -14,7 +14,7 @@ def print_hello():
     return 'hello world'
 
 if __name__ == "__main__":
-    llm = Coral()
+    llm = Cohere()
     # llm = TogetherLLM()
     assistant = AIAssistant(llm=llm, name='Adam')
     assistant.add_tool(print_hello())

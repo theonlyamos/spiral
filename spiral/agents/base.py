@@ -48,6 +48,9 @@ class Agent(BaseModel):
     is_sub_agent:  bool = Field(default=False)
     """Flag indicating if agent is a sub agent"""
     
+    system_prompt: str = Field(default="")
+    """System prompt for context"""
+    
     def generate_prompt(self, query: str)->dict:
         """Generates a prompt from a query and a dictionary of tools.
 
@@ -66,7 +69,9 @@ class Agent(BaseModel):
         # prompt = prompt.replace("{query}", query)
         prompt = prompt.replace("{tools}", tools_str)
         prompt = prompt.replace("{available_tools}", json.dumps(available_tools))
-
+        
+        self.system_prompt = prompt
+        
         self.memory.append({'User': query})
         
         for line in self.memory:

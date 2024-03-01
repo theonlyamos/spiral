@@ -4,7 +4,7 @@ import argparse
 from argparse import Namespace
 
 from spiral.llms import (
-    Coral, GPT4,
+    Cohere, OpenAI,
     load_llm,
     list_llms
 )
@@ -21,19 +21,22 @@ from .config import VERSION
 
 def start(args: Namespace):
     try:
-        if args.models:
-            print("\nAvailable Models:")
+        if args.platforms:
+            print("\nAvailable Platforms:")
             for index, l in enumerate(list_llms()):
-                print(f"[{index+1}] {l}")
+                print(f"[{index}] {l}")
             sys.exit()
-        llm = None
-        if args.llm:
-            llm = load_llm(model_name=args.llm)
-        llm = llm() if llm else Coral()
+        platform = None
+        if args.platform:
+            platform = load_llm(model_name=args.platform)
+        platform = platform() if platform else Cohere()
         if args.api_key:
-            llm.api_key = args.api_key
+            platform.api_key = args.api_key
+        if args.model:
+            platform.model = args.model
+            
         # llm = TogetherLLM()
-        assistant = AIAssistant(llm=llm, name=args.name, verbose=args.verbose)
+        assistant = AIAssistant(llm=platform, name=args.name, verbose=args.verbose)
         
         assistant.add_tool(Calculator())
         assistant.add_tool(YoutubePlayer())
@@ -52,9 +55,10 @@ def get_arguments():
     global parser
 
     parser.add_argument('--name', default='Adam', help='Set name of agent')
-    parser.add_argument('--llm', default='', help='Set llm to use')
+    parser.add_argument('--platform', default='', help='Set llm platform to use')
+    parser.add_argument('--platforms', action='store_true', help='Get a list of all supported platforms')
+    parser.add_argument('--model', default='', help='Specify model or model_url to use')
     parser.add_argument('--api-key', default='', help='Set api key of selected llm')
-    parser.add_argument('--models', action='store_true', help='Get a list of all supported models')
     parser.add_argument('--verbose', action='store_true', help='Set verbose mode')
     parser.add_argument('-v','--version', action='version', version=f'%(prog)s {VERSION}')
     parser.set_defaults(func=start)

@@ -1,6 +1,5 @@
 import os
 import sys
-import logging
 import together 
 from spiral.llms.base import LLM
 from dotenv import load_dotenv
@@ -45,7 +44,7 @@ def cut_off_text(text, prompt):
     else:
         return text
 
-class TogetherLLM(LLM):
+class Together(LLM):
     """Together large language models.""" 
     
     model: str = "mistralai/Mixtral-8x7B-Instruct-v0.1"
@@ -91,13 +90,12 @@ class TogetherLLM(LLM):
             max_tokens=self.max_tokens,
             temperature=self.temperature,
         )
-        # text = output['output']['choices'][0]['text']
-
+        
         return output['output']['choices'][0]['text']   # type: ignore
 
 if __name__ == "__main__":
     try:
-        assistant = TogetherLLM()
+        assistant = Together()
         while True:
             response = assistant(input('\n[Prompt]# '))
             print(response)

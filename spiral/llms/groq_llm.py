@@ -1,4 +1,4 @@
-from openai import OpenAI as OpenAILLM
+from groq import Groq as GroqLLM
 from spiral.llms.base import LLM
 from typing import Any, Optional
 from dotenv import load_dotenv
@@ -15,15 +15,15 @@ logger = logging.getLogger('spiral.log')
 load_dotenv()
 
 
-class OpenAI(LLM):
-    """A class for interacting with the OpenAI API.
+class Groq(LLM):
+    """A class for interacting with the Groq API.
 
     Args:
-        model: The name of the OpenAI model to use.
+        model: The name of the Groq model to use.
         temperature: The temperature to use when generating text.
-        api_key: Your OpenAI API key.
+        api_key: Your Groq API key.
     """
-    model: str = 'gpt-4-0125-preview'
+    model: str = 'mixtral-8x7b-32768'
     """model endpoint to use""" 
     
     temperature: float = 0.1
@@ -32,8 +32,8 @@ class OpenAI(LLM):
     chat_history: list[str] = []
     """Chat history"""
     
-    api_key: str = os.getenv('OPENAI_API_KEY', '')
-    """OpenAI API key""" 
+    api_key: str = os.getenv('GROQ_API_KEY', '')
+    """Groq API key""" 
     
     supports_system_prompt: bool = True
     """Flag to indicate if system prompt should be supported"""
@@ -42,30 +42,32 @@ class OpenAI(LLM):
     """System prompt to prepend to queries"""
 
     def __call__(self, query, **kwds: Any)->str|None:
-        """Generates a response to a query using the OpenAI API.
+        """Generates a response to a query using the Groq API.
 
         Args:
         query: The query to generate a response to.
-        kwds: Additional keyword arguments to pass to the OpenAI API.
+        kwds: Additional keyword arguments to pass to the Groq API.
 
         Returns:
         A string containing the generated response.
         """
 
-        client = OpenAILLM(api_key=self.api_key)
+        client = GroqLLM(api_key=self.api_key)
         response = client.chat.completions.create(
             model=self.model,
             messages=[
                 {"role": "user", "content": query}
             ],
-            temperature=self.temperature
+            temperature=self.temperature,
+            top_p=1,
+            stop=None,
         )
             
         return response.choices[0].message.content
     
 if __name__ == "__main__":
     try:
-        assistant = OpenAI()
+        assistant = Groq()
         # assistant.add_tool(calculator)
         while True:
             message = input("\nEnter Query$ ")

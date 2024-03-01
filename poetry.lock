@@ -704,6 +704,25 @@ docs = ["Sphinx", "furo"]
 test = ["objgraph", "psutil"]
 
 [[package]]
+name = "groq"
+version = "0.4.1"
+description = "The official Python library for the groq API"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "groq-0.4.1-py3-none-any.whl", hash = "sha256:2939ff96e3fc633416e5d9ab26bbfd63c70b2226338a507f8c2b0b3aa27c9dec"},
+    {file = "groq-0.4.1.tar.gz", hash = "sha256:f2285c0a7d64abefcdec3d61e8bc1a61ff04d887ed30b991ac7fe53ae1e10251"},
+]
+
+[package.dependencies]
+anyio = ">=3.5.0,<5"
+distro = ">=1.7.0,<2"
+httpx = ">=0.23.0,<1"
+pydantic = ">=1.9.0,<3"
+sniffio = "*"
+typing-extensions = ">=4.7,<5"
+
+[[package]]
 name = "grpcio"
 version = "1.62.0"
 description = "HTTP/2-based RPC framework"
@@ -2434,4 +2453,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "3735a73d1d2f2a15c80632c8e28ccbe2bc4ac8c8b7a37aaa234894be9479ca45"
+content-hash = "345ad6c295f5b5d56cd4461d59d98724d395b81d5a532e956216f231702a8e82"
