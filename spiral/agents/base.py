@@ -3,6 +3,8 @@ import json
 import asyncio
 import logging
 from typing import Optional, List, Dict, Union
+
+import uuid
 from pydantic import BaseModel, Field
 
 from ..llms.base import LLM
@@ -52,14 +54,20 @@ class Agent(BaseModel):
     system_prompt: str = Field(default="")
     """System prompt for context"""
     
+    id: str = uuid.uuid4().hex
+    """Unique ID for each agent instance"""
+    
+    parent_id: Optional[str] = None
+    """ID of parent agent (if any)"""
+    
     def generate_prompt(self, query: str)->dict:
-        """Generates a prompt from a query and a dictionary of tools.
+        """Generates a prompt from a query.
 
         Args:
         query: A string containing the query.
 
         Returns:
-        A string containing the generated prompt.
+        A dictionary containing the generated prompt.
         """
 
         tools_str = "\n".join([f"{tool.name}: {tool.description}" for tool in self.tools])
@@ -112,8 +120,9 @@ class Agent(BaseModel):
                 if not tool:
                     raise Exception(f'Tool {response_data["function"]} not found') # type: ignore
                 
-                if self.verbose:
-                    logger.info(f"Running function '{tool.name}' with parameters: {response_data['arguments']}") # type: ignore
+                print(f"Running tool '{tool.name}' with parameters: {response_data['arguments']}")
+                # if self.verbose:
+                #     logger.info(f"Running function '{tool.name}' with parameters: {response_data['arguments']}") # type: ignore
                 if isinstance(response_data['arguments'], list): # type: ignore
                     result = tool.run(*response_data['arguments']) # type: ignore
                 else:
@@ -315,7 +324,7 @@ class Agent(BaseModel):
         with open(AGENTS_FILE, 'r') as file:
             content = file.read()
             agents = json.loads(content) if content else []
-            agents.append(new_agent.model_dump(mode='json'))
+            agents.append(new_agent.model_dump(mode='json'))        #type: ignore
         
         with open(AGENTS_FILE, 'w') as file:
             json.dump(agents, file, indent=4)
