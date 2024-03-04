@@ -262,7 +262,7 @@ class Agent(BaseModel):
                     agent_llm = int(input("\n[Select LLM]: "))
                     selected_llm = llms[agent_llm]
                     llm = load_llm(selected_llm)
-                    new_agent = Agent.create_agent(agent_name, llm(), agent_task, is_sub_agent=True) # type: ignore
+                    new_agent = Agent.create_agent(agent_name, llm(), agent_task, is_sub_agent=True, parent_id=self.id) # type: ignore
                     self.add_sub_agent(new_agent)
                     print(f"\nAgent {agent_name} added successfully!")
                     
@@ -309,8 +309,8 @@ class Agent(BaseModel):
         return task
     
     @classmethod
-    def create_agent(cls, name: str, llm: LLM, task_description: str, tools: List[Tool] = [], is_sub_agent: bool = False):
-        """Create a new sub -agent instance
+    def create_agent(cls, name: str, llm: LLM, task_description: str, tools: List[Tool] = [], is_sub_agent: bool = False, parent_id=None) -> 'Agent':
+        """Create a new agent instance
 
         Args:
             name (str): Name of the agent
@@ -318,8 +318,13 @@ class Agent(BaseModel):
             task (Task): Task instance
             tools (List[Tool], optional): List of tools available to the agent. Defaults to [].
             is_sub_agent (bool, optional): Set whether agent is a sub_agent. Defaults to True.
+            parent_id (str, optional): Set parent agent id. Defaults to None.
+        
+        Returns:
+            Agent: New agent instance
         """
         task = Task(description=task_description)
+        parent_id = None
         new_agent = cls(name=name, llm=llm,task=task, tools=tools, is_sub_agent=is_sub_agent)
         with open(AGENTS_FILE, 'r') as file:
             content = file.read()
@@ -328,6 +333,7 @@ class Agent(BaseModel):
         
         with open(AGENTS_FILE, 'w') as file:
             json.dump(agents, file, indent=4)
+            
         return new_agent
     
     @staticmethod
@@ -345,6 +351,7 @@ class Agent(BaseModel):
                 agents = [Agent(**agent) for agent in agents]   #type: ignore
                 
             return agents
+                
         except Exception as e:
             logger.warning(str(e))
             return []

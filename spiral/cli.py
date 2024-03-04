@@ -20,8 +20,9 @@ from .tools import (
 from .config import VERSION
 
 def manage_agents(args: Namespace):
+    print(args.__dict__)
     try:
-        if args.add:
+        if args.new:
             agent_name = input("\n[Enter agent name]: ")
             agent_task = input("\n[Enter brief description of agent task]: ")
             llms = list_llms()
@@ -86,8 +87,8 @@ def get_arguments():
     subparsers = parser.add_subparsers()
     agents_parser = subparsers.add_parser('agents', help="Manage agents")
     agents_parser.add_argument("name", type=str, nargs="?", help="Name of an agent to manage (details|update|remove)")  
+    agents_parser.add_argument('--new', action='store_true', help='Create a new agent')
     agents_parser.add_argument('--list', action='store_true', help='List all saved agents')
-    agents_parser.add_argument('--add', action='store_true', help='Create a new agent')
     agents_parser.add_argument('--update', action='store_true', help='Update an agent')
     agents_parser.add_argument('--remove', action='store_true', help='Delete an agent')
     agents_parser.set_defaults(func=manage_agents)
