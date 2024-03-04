@@ -14,7 +14,8 @@ from .tools import (
     Calculator, YoutubePlayer,
     WorldNews, PythonREPL,
     FSBrowser, SearchTool,
-    InternetBrowser, tool
+    InternetBrowser,
+    take_screenshot
 )
 
 from .config import VERSION
@@ -54,6 +55,11 @@ def start(args: Namespace):
             for index, l in enumerate(list_llms()):
                 print(f"[{index}] {l}")
             sys.exit()
+        elif args.agents:
+            print("\nAvailable Agents:")
+            for index, agent in enumerate(Agent.list_agents()):
+                print(f"\n[{index}] {agent.name}")                 #type: ignore
+            sys.exit()
         platform = None
         if args.platform:
             platform = load_llm(model_name=args.platform)
@@ -75,6 +81,7 @@ def start(args: Namespace):
         assistant.add_tool(PythonREPL())
         assistant.add_tool(InternetBrowser())
         assistant.add_tool(SearchTool())
+        assistant.add_tool(take_screenshot())
         assistant.start()
     except Exception as e:
         logging.error(str(e))
@@ -96,6 +103,7 @@ def get_arguments():
     parser.add_argument('--name', type=str, default='Adam', help='Set name of agent')
     parser.add_argument('--platform', default='', help='Set llm platform to use')
     parser.add_argument('--platforms', action='store_true', help='Get a list of all supported platforms')
+    parser.add_argument('--agents', action='store_true', help='List all saved agents')
     parser.add_argument('--model', type=str, default='', help='Specify model or model_url to use')
     parser.add_argument('--api-key', type=str, default='', help='Set api key of selected llm')
     parser.add_argument('--temperature', type=float, default=0.1, help='Set temperature of model')

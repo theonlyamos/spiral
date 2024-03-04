@@ -99,3 +99,6 @@ class LLM(BaseModel):
     
     system_prompt: str = Field(default='')
     """System prompt to use for context."""
+    
+    is_multimodal: bool = Field(default=False)
+    """Whether the model is multimodal."""

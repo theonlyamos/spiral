@@ -2,7 +2,7 @@ import sys
 import json
 import asyncio
 import logging
-from typing import Optional, List, Dict, Union
+from typing import Optional, List, Dict, Union, Any
 
 import uuid
 from pydantic import BaseModel, Field
@@ -128,6 +128,8 @@ class Agent(BaseModel):
                 else:
                     result = tool.run(response_data['arguments']) # type: ignore
                 
+                if isinstance(result, list) and result[0] == 'image':
+                    result = result[1]
                 response_json = {}
                 response_json['type'] = 'function_call_result'
                 response_json['result'] = result
@@ -286,7 +288,7 @@ class Agent(BaseModel):
                     print(response)
                 self.memory.append({'AI Assistant': response})
                 
-                result = self.process_response(response)
+                result: dict[Any, Any] | str = self.process_response(response)
 
                 if isinstance(result, dict) and result['type'] == 'function_call_result':
                     query = json.dumps(result)

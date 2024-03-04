@@ -3,14 +3,18 @@ from webbrowser import open_new_tab
 from typing import Union, Optional, Any, Tuple, Dict, List
 from webbrowser import open_new_tab
 from ..tools.base import Tool
+from ..tools.tool import tool
 from pydantic import Field
 from serpapi import google_search
 from pathlib import Path
+import pyautogui
 import requests
 import logging 
 import aiohttp
+import base64
 import sys
 import os
+import io
 
 NotImplementedErrorMessage = 'this tool does not suport async'
 
@@ -374,3 +378,18 @@ class SearchTool(Tool):
         else:
             toret = "No good search result found"
         return toret
+
+@tool
+def take_screenshot():
+    """Use this tool to take a screenshot of the screen."""
+
+    screenshot = pyautogui.screenshot()
+
+    # Convert the screenshot to a BytesIO object
+    screenshot_bytes = io.BytesIO()
+    screenshot.save(screenshot_bytes, format='PNG')
+
+    # Convert the BytesIO object to base64
+    screenshot_base64 = base64.b64encode(screenshot_bytes.getvalue()).decode('utf-8')
+
+    return ['image', screenshot_base64]
