@@ -2,7 +2,7 @@ import sys
 import json
 import asyncio
 import logging
-from typing import Optional, List, Dict, Union, Any
+from typing import Optional, List, Dict, Union, Any, Self
 
 import uuid
 from pydantic import BaseModel, Field
@@ -10,7 +10,6 @@ from pydantic import BaseModel, Field
 from ..llms.base import LLM
 from ..tools.base import Tool
 from ..tasks.base import Task
-from ..llms.actions import load_llm, list_llms
 from ..agents.templates import PROMPT_TEMPLATE
 from ..config import AGENTS_FILE
 
@@ -254,35 +253,28 @@ class Agent(BaseModel):
                     sys.exit(1)
                     
                 elif query.lower() == 'add agent':
-                    agent_name = input("\n[Enter agent name]: ")
-                    agent_task = input("\n[Enter brief description of agent task]: ")
-                    llms = list_llms()
-                    llms_str = "\nAvailable LLMs:"
-                    for index, llm in enumerate(llms):
-                        llms_str += (f"\n[{index}] {llm}")
-                    print(llms_str)
-                    agent_llm = int(input("\n[Select LLM]: "))
-                    selected_llm = llms[agent_llm]
-                    llm = load_llm(selected_llm)
-                    new_agent = Agent.create_agent(agent_name, llm(), agent_task, is_sub_agent=True, parent_id=self.id) # type: ignore
-                    self.add_sub_agent(new_agent)
-                    print(f"\nAgent {agent_name} added successfully!")
-                    
-                    query = input("\nUser (q to quit): ")
-                    continue
+                        new_agent = Agent.create_agent(is_sub_agent=True, parent_id=self.id)
+                        if new_agent:
+                            self.add_sub_agent(new_agent)
+                            print(f"\nAgent {new_agent.name} added successfully!")
+                        else:
+                            print("\nError creating agent")
+                        
+                        query = input("\nUser (q to quit): ")
+                        continue
                 
                 elif query.lower() == 'list agents':
                     agents_str = "\nAvailable Agents:"
                     agents = Agent.list_agents()
-                    agents = [agent for agent in agents if agent.is_sub_agent]
-                    for index, agent in enumerate(self.sub_agents):
+                    sub_agents = [agent for agent in agents if agent.parent_id == self.id]
+                    for index, agent in enumerate(sub_agents):
                         agents_str += (f"\n[{index}] {agent.name}")
                     print(agents_str)
                     query = input("\nUser (q to quit): ")
                     continue
                 
                 full_prompt = self.generate_prompt(query)
-                # print(full_prompt['output'])
+                
                 response = self.llm(full_prompt['output']) # type: ignore
                 if self.verbose:
                     print(response)
@@ -300,7 +292,8 @@ class Agent(BaseModel):
                 print('Exiting...')
                 sys.exit(1)
             except Exception as e:
-                print(str(e))
+                logger.warning(str(e))
+                sys.exit(1)
 
     def start(self):
         """
@@ -311,13 +304,13 @@ class Agent(BaseModel):
         return task
     
     @classmethod
-    def create_agent(cls, name: str, llm: LLM, task_description: str, tools: List[Tool] = [], is_sub_agent: bool = False, parent_id=None) -> 'Agent':
+    def create_agent(cls,  name: Optional[str]=None, task_description: Optional[str]=None, tools: List[Tool]=[], llm: Optional[LLM]=None, is_sub_agent: bool = False, parent_id=None) -> Self | None:
         """Create a new agent instance
 
         Args:
             name (str): Name of the agent
             llm (LLM): LLM instance
-            task (Task): Task instance
+            task_description (str): Task description
             tools (List[Tool], optional): List of tools available to the agent. Defaults to [].
             is_sub_agent (bool, optional): Set whether agent is a sub_agent. Defaults to True.
             parent_id (str, optional): Set parent agent id. Defaults to None.
@@ -325,18 +318,40 @@ class Agent(BaseModel):
         Returns:
             Agent: New agent instance
         """
-        task = Task(description=task_description)
-        parent_id = None
-        new_agent = cls(name=name, llm=llm,task=task, tools=tools, is_sub_agent=is_sub_agent)
-        with open(AGENTS_FILE, 'r') as file:
-            content = file.read()
-            agents = json.loads(content) if content else []
-            agents.append(new_agent.model_dump(mode='json'))        #type: ignore
-        
-        with open(AGENTS_FILE, 'w') as file:
-            json.dump(agents, file, indent=4)
+        try:
+            name = name or input("\n[Enter agent name]: ")
+            task_description = task_description or input("\n[Enter brief description of agent task]: ")
+
+            while not llm:
+                llms = LLM.list_llms()
+                llms_str = "\nAvailable LLMs:"
+                for index, llm_l in enumerate(llms):
+                    llms_str += (f"\n[{index}] {llm_l}")
+                print(llms_str)
+                agent_llm = int(input("\n[Select LLM]: "))
+                selected_llm = llms[agent_llm]
+                loaded_llm = LLM.load_llm(selected_llm)
+
+                if loaded_llm:
+                    llm = loaded_llm()
+                    llm.model = input(f"\nEnter model name [{llm.model}]: ") or llm.model
+                    llm.temperature = float(input(f"\nEnter model temperature [{llm.temperature}]: ")) or llm.temperature
+            if llm:   
+                task = Task(description=task_description)
+                new_agent = cls(name=name, llm=llm, task=task, tools=tools, is_sub_agent=is_sub_agent, parent_id=parent_id)
+                with open(AGENTS_FILE, 'r') as file:
+                    content = file.read()
+                    agents = json.loads(content) if content else []
+                    agents.append(new_agent.dict())        #type: ignore
+                
+                with open(AGENTS_FILE, 'w') as file:
+                    json.dump(agents, file, indent=4)
+                    
+                return new_agent
             
-        return new_agent
+        except Exception as e:
+            logger.error(str(e))
+            sys.exit(1)
     
     @staticmethod
     def list_agents(id: str = "")-> List['Agent']:
@@ -357,4 +372,21 @@ class Agent(BaseModel):
         except Exception as e:
             logger.warning(str(e))
             return []
+        
+    @classmethod
+    def load_agent(cls, agent_name: str):
+        """Dynamically load Agent based on name"""
+        try:
+            agent_name = agent_name.lower()
+            agents = cls.list_agents()
+            loaded_agents: list[Agent] = [agent for agent in agents if agent.name.lower() == agent_name]
+            if len(loaded_agents):
+                agent = loaded_agents[0]
+                loaded_llm = LLM.load_llm(agent.llm.platform)
+                if loaded_llm:
+                    agent.llm = loaded_llm(**agent.llm.dict())
+                return agent
+        except Exception as e:
+            logging.error(str(e))
+            return None
         

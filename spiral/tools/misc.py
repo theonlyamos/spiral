@@ -85,7 +85,9 @@ class InternetBrowser(Tool):
     :param url: The url to visit
     """
     def run(self, url: str):
-        return open_new_tab(url)
+        open_new_tab(url)
+        
+        return f"Opened {url} on the internet browser"
     
     def arun(self, url: str):
         raise NotImplementedError(NotImplementedErrorMessage)

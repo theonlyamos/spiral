@@ -1,7 +1,9 @@
 from pydantic import BaseModel, Field
 from typing import Any, List, Dict
+from pathlib import Path
 import logging
-import json
+import inspect
+import sys
 
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s',
@@ -102,3 +104,36 @@ class LLM(BaseModel):
     
     is_multimodal: bool = Field(default=False)
     """Whether the model is multimodal."""
+    
+    platform: str = Field(default="")
+    """This is set to the name of the class"""
+    
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.platform = self.__class__.__name__
+    
+    @staticmethod
+    def list_llms():
+        """List all supported LLMs"""
+        try:
+            module_path = Path(__file__, '..').resolve()
+            sys.path.append(str(module_path))
+            module = __import__(str(inspect.getmodulename(Path('__init__.py'))))
+            return [f[0] for f in inspect.getmembers(module, inspect.isclass) if f[0] != 'LLM']
+        except Exception as e:
+            logging.error(str(e))
+            return []
+    
+    @staticmethod
+    def load_llm(model_name: str):
+        """Dynamically load LLMs based on name"""
+        try:
+            model_name = model_name.lower()
+            module_path = Path(__file__, '..').resolve()
+            sys.path.append(str(module_path))
+            module = __import__(str(inspect.getmodulename(Path('__init__.py'))))
+            llm: type[LLM] = [f[1] for f in inspect.getmembers(module, inspect.isclass) if f[0].lower() == model_name][0]
+            return llm
+        except Exception as e:
+            logging.error(str(e))
+            return None

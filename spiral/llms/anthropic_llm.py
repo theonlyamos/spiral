@@ -23,7 +23,7 @@ class Claude(LLM):
         temperature: The temperature to use when generating text.
         api_key: Your Anthropic API key.
     """
-    model: str = 'claude-3-opus-20240229'
+    model: str = 'claude-3-sonnet-20240229'
     """model endpoint to use""" 
     
     temperature: float = 0.1
