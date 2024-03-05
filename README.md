@@ -21,9 +21,13 @@ The architecture is highly modular and extensible. New tools and capabilities ca
 ### Getting Started
 
 ### Installation
-```sh
+```bash
 pip install spiral
 ```
+or
+```bash
+pip install https://github.com/theonlyamos/spiral/archive/main.zip
+``
 
 ### Usage
 Run with default settings
