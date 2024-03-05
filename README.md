@@ -65,8 +65,6 @@ Print help message
 spiral --help
 ```
 
-See [](examples) for more usage samples.
-
 ### Contributing
 Spiral is open source and contributions are welcome. See [](CONTRIBUTING.md) for more details.
 
