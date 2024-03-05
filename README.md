@@ -66,7 +66,7 @@ spiral --help
 ```
 
 ### Contributing
-Spiral is open source and contributions are welcome. See [](CONTRIBUTING.md) for more details.
+Spiral is open source and contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
 
 ### License
 This project is licensed under the MIT license. See [LICENSE.md](LICENSE.md) for more details.
