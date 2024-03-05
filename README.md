@@ -27,7 +27,7 @@ pip install spiral
 or
 ```bash
 pip install https://github.com/theonlyamos/spiral/archive/main.zip
-``
+```
 
 ### Usage
 Run with default settings
