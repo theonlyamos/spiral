@@ -1,12 +1,12 @@
 ### Spiral
-Spiral is an open-source conversational AI assistant built in Python. It allows you to have natural conversations and get help with various tasks.
+Spiral is an open-source autonous AI agents orchestrator built in Python. It allows you to create and manage AI agents easily.
 
 ### Features
+- Create and manage AI agents.
 - Conversational interface using chat
 - Modular architecture for easy extensibility
 - Access to various tools like calculators, web - search, etc.
-- Support for multiple chatbot personalities
-- Asynchronous processing using asyncio for - responsiveness
+- Support for multiple platforms
 
 ### Architecture
 The core components of Spiral are:
