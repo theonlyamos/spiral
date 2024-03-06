@@ -383,15 +383,51 @@ class SearchTool(Tool):
 
 @tool
 def take_screenshot():
-    """Use this tool to take a screenshot of the screen."""
-
+    """Use this tool to take a screenshot of the screen.
+    Example:
+    User: take a screenshot
+    AI Assistant: {{
+        "type": "function_call",
+        "function": "Take Screenshot",
+        "arguments": []
+    }}"""
     screenshot = pyautogui.screenshot()
 
     # Convert the screenshot to a BytesIO object
     screenshot_bytes = io.BytesIO()
-    screenshot.save(screenshot_bytes, format='PNG')
+    screenshot.save(screenshot_bytes, format='JPEG')
 
     # Convert the BytesIO object to base64
     screenshot_base64 = base64.b64encode(screenshot_bytes.getvalue()).decode('utf-8')
-
+    
     return ['image', screenshot_base64]
+
+@tool
+def get_ui_elements_coordinates():
+    import cv2
+    import numpy as np
+    
+    def get_ui_element_coords(image_path, element_name):
+        # Load the image
+        image = cv2.imread(image_path)
+        
+        # Convert the image to grayscale
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        
+        # Perform template matching to find the UI element
+        template = cv2.imread(f'{element_name}.png', 0)
+        res = cv2.matchTemplate(gray, template, cv2.TM_CCOEFF_NORMED)
+        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+        
+        # Get the coordinates of the matched region
+        top_left = max_loc
+        bottom_right = (top_left[0] + template.shape[1], top_left[1] + template.shape[0])
+        
+        # Return the coordinates
+        return top_left, bottom_right
+    
+    # Example usage
+    image_path = 'screenshot.png'
+    element_name = 'brave'
+    coords = get_ui_element_coords(image_path, element_name)
+    print(f'The coordinates of the {element_name} icon are: {coords}')

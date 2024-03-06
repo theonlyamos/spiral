@@ -211,7 +211,7 @@ if it's the final result of the task, or
 
 {
   "type": "function_call",
-  "function": "<function_name>",
+  "function": "<Function Name>",
   "arguments": ["<arg1>", "<arg2>", ...]
 }
 

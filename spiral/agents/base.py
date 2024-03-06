@@ -33,8 +33,6 @@ class Agent(BaseModel):
     tools: List[Tool] = Field(default=[])
     """Tools to be used by agent"""
     
-    memory: List[Dict[str, str]] = []
-    
     prompt_template: str = Field(default=PROMPT_TEMPLATE)
     """Base system prompt template"""
     
@@ -50,14 +48,25 @@ class Agent(BaseModel):
     is_sub_agent:  bool = Field(default=False)
     """Flag indicating if agent is a sub agent"""
     
-    system_prompt: str = Field(default="")
-    """System prompt for context"""
-    
     id: str = uuid.uuid4().hex
     """Unique ID for each agent instance"""
     
     parent_id: Optional[str] = None
     """ID of parent agent (if any)"""
+    
+    def __init__(self, **data):
+        super().__init__(**data)
+        
+    def format_system_prompt(self):
+        tools_str = "\n".join([f"{tool.name}: {tool.description}" for tool in self.tools])
+        available_tools = [tool.name for tool in self.tools]
+        prompt = self.prompt_template
+        prompt = prompt.replace("{name}", self.name)
+        # prompt = prompt.replace("{query}", query)
+        prompt = prompt.replace("{tools}", tools_str)
+        prompt = prompt.replace("{available_tools}", json.dumps(available_tools))
+        
+        self.llm.system_prompt = prompt
     
     def generate_prompt(self, query: str)->dict:
         """Generates a prompt from a query.
@@ -68,23 +77,19 @@ class Agent(BaseModel):
         Returns:
         A dictionary containing the generated prompt.
         """
-
-        tools_str = "\n".join([f"{tool.name}: {tool.description}" for tool in self.tools])
-        available_tools = [tool.name for tool in self.tools]
+        processed_query = self.extract_json(query)
         
-        prompt = self.prompt_template
-        prompt = prompt.replace("{name}", self.name)
-        # prompt = prompt.replace("{query}", query)
-        prompt = prompt.replace("{tools}", tools_str)
-        prompt = prompt.replace("{available_tools}", json.dumps(available_tools))
+        if isinstance(processed_query, dict):
+            if isinstance(processed_query['result'], list):
+                prompt = {'role': 'User', 'type': 'image', 'image': processed_query['result'][1]}
+            else:
+                prompt = {'role': 'User', 'type': 'text', 'message': processed_query['result']}
+        else:
+            prompt = {'role': 'User', 'type': 'text', 'message': query}
         
-        self.system_prompt = prompt
-        
-        self.memory.append({'User': query})
-        
-        for line in self.memory:
-            for key, value in line.items():
-                prompt += f'\n\n{key}: {value}'
+        # for line in self.memory:
+        #     for key, value in line.items():
+        #         prompt += f'\n{key}: {value}'
 
         return {
             'type': 'query',
@@ -118,17 +123,16 @@ class Agent(BaseModel):
                 
                 if not tool:
                     raise Exception(f'Tool {response_data["function"]} not found') # type: ignore
+               
+                print(f"Running tool '{tool.name.title()}' with parameters: {response_data['arguments']}")
                 
-                print(f"Running tool '{tool.name}' with parameters: {response_data['arguments']}")
-                # if self.verbose:
-                #     logger.info(f"Running function '{tool.name}' with parameters: {response_data['arguments']}") # type: ignore
                 if isinstance(response_data['arguments'], list): # type: ignore
                     result = tool.run(*response_data['arguments']) # type: ignore
                 else:
                     result = tool.run(response_data['arguments']) # type: ignore
-                
-                if isinstance(result, list) and result[0] == 'image':
-                    result = result[1]
+
+                # if isinstance(result, list) and result[0] == 'image':
+                #     result = result[1]
                 response_json = {}
                 response_json['type'] = 'function_call_result'
                 response_json['result'] = result
@@ -137,6 +141,7 @@ class Agent(BaseModel):
             else:
                 raise Exception('Not a json object')
         except Exception as e:
+            logger.exception(e)
             # logger.warning(str(e))
             return response_data
     
@@ -214,7 +219,7 @@ class Agent(BaseModel):
             
             return json_dict
         except Exception as e:
-            logger.warning(str(e))
+            # logger.warning(str(e))
             return content
     
     def add_tool(self, tool: Tool):
@@ -245,6 +250,8 @@ class Agent(BaseModel):
         """
         Initialize the llm
         """
+        self.format_system_prompt()
+
         query = input("\nUser (q to quit): ")
         while query:
             try:
@@ -274,15 +281,16 @@ class Agent(BaseModel):
                     continue
                 
                 full_prompt = self.generate_prompt(query)
-                
                 response = self.llm(full_prompt['output']) # type: ignore
+                self.llm.chat_history.append(full_prompt['output'])
+
                 if self.verbose:
                     print(response)
-                self.memory.append({'AI Assistant': response})
                 
                 result: dict[Any, Any] | str = self.process_response(response)
 
                 if isinstance(result, dict) and result['type'] == 'function_call_result':
+                    # self.llm.chat_history.append({'role': 'Assistant', 'type': 'text', 'message': response.strip()})
                     query = json.dumps(result)
                 else:
                     print(f"\n{self.name}: {result}")
@@ -292,7 +300,8 @@ class Agent(BaseModel):
                 print('Exiting...')
                 sys.exit(1)
             except Exception as e:
-                logger.warning(str(e))
+                # logger.warning(str(e))
+                logger.exception(e)
                 sys.exit(1)
 
     def start(self):
@@ -361,16 +370,21 @@ class Agent(BaseModel):
             id (str): Id of the agent (Optional)
         """
         try:
-            agents: List['Agent']
+            agents: List['Agent'] = []
             with open(AGENTS_FILE, 'r') as file:
                 content = file.read()
-                agents = json.loads(content) if content else []
-                agents = [Agent(**agent) for agent in agents]   #type: ignore
-                
+                loaded_agents: list[dict] = json.loads(content) if content else []
+                # agents = [Agent(**agent) for agent in agents]   #type: ignore
+                for agent in loaded_agents:
+                    llm = LLM.load_llm(agent["llm"]["platform"])
+                    loaded_agent = Agent(**agent)
+                    if llm:
+                        loaded_agent.llm = llm(**agent["llm"])
+                    agents.append(loaded_agent)
             return agents
                 
         except Exception as e:
-            logger.warning(str(e))
+            logger.exception(e)
             return []
         
     @classmethod
@@ -382,11 +396,12 @@ class Agent(BaseModel):
             loaded_agents: list[Agent] = [agent for agent in agents if agent.name.lower() == agent_name]
             if len(loaded_agents):
                 agent = loaded_agents[0]
-                loaded_llm = LLM.load_llm(agent.llm.platform)
-                if loaded_llm:
-                    agent.llm = loaded_llm(**agent.llm.dict())
+                # loaded_llm = LLM.load_llm(agent.llm.platform)
+                # if loaded_llm:
+                #     agent.llm = loaded_llm(**agent.llm.dict())
                 return agent
         except Exception as e:
-            logging.error(str(e))
+            logger.exception(e)
+            # logging.error(str(e))
             return None
         

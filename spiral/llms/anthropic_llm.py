@@ -35,8 +35,51 @@ class Claude(LLM):
     api_key: str = os.getenv('ANTHROPIC_API_KEY', '')
     """ANTHROPIC API key""" 
     
+    max_tokens: int = 4000
+    """The maximum number of tokens to generate in the completion.""" 
+    
     supports_system_prompt: bool = True
     """Flag to indicate if system prompt should be supported"""
+    
+    def format_query(self, message: dict[str, str]) -> list:
+        """Formats a message for the Cohere API"""
+        formatted_message = self.chat_history.copy()
+        formatted_message.append(message) # type: ignore
+        
+        messages = [
+            {
+                "role": "user",
+                "content": []
+            },
+            {
+                "role": "assistant",
+                "content": []
+            }
+        ]
+        
+        for fm in formatted_message:
+            new_message = {}
+            if fm['type'] == 'text': # type: ignore
+                new_message = {
+                    'type': fm['type'], # type: ignore
+                    'text': fm['message'] # type: ignore
+                }
+            else:
+                new_message = {
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": "image/jpeg",
+                    "data": fm['image'] # type: ignore
+                }
+            }
+            
+            if fm['role'].lower() == 'user': # type: ignore
+                messages[0]['content'].append(new_message)
+            else:
+                messages[1]['content'].append(new_message)
+
+        return messages
 
     def __call__(self, query, **kwds: Any)->list|str|None:
         """Generates a response to a query using the Claude API.
@@ -52,22 +95,12 @@ class Claude(LLM):
         client = anthropic.Anthropic(api_key=self.api_key)
         result = client.messages.create(
             model=self.model,
-            max_tokens=4000,
+            max_tokens=self.max_tokens,
             temperature=self.temperature,
             system=self.system_prompt,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": query
-                        }
-                    ]
-                },
-            ]
+            messages=self.format_query(query)
         )
-
+        
         return result.content[0].text     
 
 if __name__ == "__main__":

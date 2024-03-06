@@ -108,6 +108,9 @@ class LLM(BaseModel):
     platform: str = Field(default="")
     """This is set to the name of the class"""
     
+    chat_history: List[Dict[str, str]] = []
+    """Chat history stored as a list of responses"""
+    
     def __init__(self, **data):
         super().__init__(**data)
         self.platform = self.__class__.__name__

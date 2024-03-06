@@ -90,13 +90,22 @@ def start(args: Namespace):
                 assistant = loaded_agent
             else:
                 assistant_description = "You are an ai assistant. Your main goal is to help the user complete tasks"
-                assistant_tools = [Calculator(), YoutubePlayer(), WorldNews(), FSBrowser(), PythonREPL(),
-                                   InternetBrowser(), SearchTool(), take_screenshot()]
-                assistant = AIAssistant.create_agent(name=args.agent, task_description=assistant_description, tools=assistant_tools, llm=platform) #type: ignore
+                assistant = AIAssistant.create_agent(name=args.agent, task_description=assistant_description, llm=platform) #type: ignore
+
         else:
             assistant = AIAssistant(llm=platform, name=args.name, verbose=args.verbose)
         
         if assistant:
+            assistant.llm = platform
+            assistant.name = args.name
+            assistant.add_tool(take_screenshot())
+            assistant.add_tool(Calculator())
+            assistant.add_tool(YoutubePlayer())
+            assistant.add_tool(WorldNews())
+            assistant.add_tool(FSBrowser())
+            assistant.add_tool(PythonREPL())
+            assistant.add_tool(InternetBrowser())
+            assistant.add_tool(SearchTool())
             assistant.start()
     except Exception as e:
         logging.error(str(e))
