@@ -33,7 +33,7 @@ class Gemini(LLM):
     vision_model: str = 'gemini-pro-vision'
     """vision model endpoint to use""" 
     
-    temperature: float = 0.1
+    temperature: float = 0.0
     """What sampling temperature to use.""" 
     
     chat_history: list[str] = []
@@ -63,9 +63,7 @@ class Gemini(LLM):
                 self.model = self.vision_model
                 messages.append(fm['image'])
                 messages.append('Above is the screenshot')
-        
-        with open('result.txt', 'wt') as file:
-            print(messages, file=file)
+
         return messages
 
     def __call__(self, query, **kwds: Any)->str|None:
@@ -80,7 +78,6 @@ class Gemini(LLM):
         """
         genai.configure(api_key=self.api_key)
 
-        client = genai.GenerativeModel(self.model)
         
         general_config = {
             "max_output_tokens": 2048,
@@ -89,17 +86,17 @@ class Gemini(LLM):
             "top_k": 32
         }
         contents = self.format_query(query)
-        print('Quering llm')
+        
+        client = genai.GenerativeModel(self.model)
+        
         response = client.generate_content(
             contents,
             stream=True,
             generation_config=general_config    # type: ignore
         )
-        print('Resolving response')
+
         response.resolve()
-        print('[!] Response resolved')
-        with open('result.txt', 'at') as file:
-            print('result', response.text, file=file)
+        
         return response.text
     
 if __name__ == "__main__":

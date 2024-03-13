@@ -259,7 +259,7 @@ class Agent(BaseModel):
                 print('Exiting...')
                 sys.exit(1)
             except Exception as e:
-                logger.warning(str(e))
+                # logger.warning(str(e))
                 sys.exit(1)
 
     def start(self):
