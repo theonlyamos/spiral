@@ -19,12 +19,19 @@ class Gemini(LLM):
     """A class for interacting with the Gemini API.
 
     Args:
-        model: The name of the Gemini model to use.
-        temperature: The temperature to use when generating text.
-        api_key: Your Google API key.
+        model (str): The name of the OpenAI model to use
+        temperature (float): The temperature to use when generating text
+        api_key (str): Your OpenAI API key
+        chat_history (list): Chat history
+        max_tokens (int): The maximum number of tokens to generate in the completion
+        supports_system_prompt (bool): Flag to indicate if system prompt should be supported
+        system_prompt (str): System prompt to prepend to queries
     """
     model: str = 'gemini-pro'
     """model endpoint to use""" 
+    
+    vision_model: str = 'gemini-pro-vision'
+    """vision model endpoint to use""" 
     
     temperature: float = 0.1
     """What sampling temperature to use.""" 
@@ -35,11 +42,31 @@ class Gemini(LLM):
     api_key: str = os.getenv('GOOGLE_API_KEY', '')
     """GOOGLE API key""" 
     
-    supports_system_prompt: bool = True
+    supports_system_prompt: bool = False
     """Flag to indicate if system prompt should be supported"""
     
-    system_prompt: str = ""
-    """System prompt to prepend to queries"""
+    is_multimodal: bool = True
+    """Whether the model is multimodal."""
+    
+    def format_query(self, message: dict[str, str]) -> list:
+        """Formats a message for the Gemini API"""
+        formatted_message = [*self.chat_history, message]
+        
+        messages = []
+        if self.system_prompt:
+            messages.append(self.system_prompt)
+        
+        for fm in formatted_message:
+            if fm['type'] == 'text': 
+                messages.append(fm['message'])
+            elif fm['type'] == 'image':
+                self.model = self.vision_model
+                messages.append(fm['image'])
+                messages.append('Above is the screenshot')
+        
+        with open('result.txt', 'wt') as file:
+            print(messages, file=file)
+        return messages
 
     def __call__(self, query, **kwds: Any)->str|None:
         """Generates a response to a query using the Gemini API.
@@ -61,16 +88,19 @@ class Gemini(LLM):
             "top_p": 1,
             "top_k": 32
         }
-        
+        contents = self.format_query(query)
+        print('Quering llm')
         response = client.generate_content(
-            [query],
+            contents,
             stream=True,
             generation_config=general_config    # type: ignore
         )
+        print('Resolving response')
         response.resolve()
-        result = response.text
-            
-        return result
+        print('[!] Response resolved')
+        with open('result.txt', 'at') as file:
+            print('result', response.text, file=file)
+        return response.text
     
 if __name__ == "__main__":
     try:

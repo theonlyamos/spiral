@@ -1,3 +1,5 @@
+import re
+import ast
 import sys
 import json
 import asyncio
@@ -68,7 +70,7 @@ class Agent(BaseModel):
         
         self.llm.system_prompt = prompt
     
-    def generate_prompt(self, query: str)->dict:
+    def generate_prompt(self, query: str|dict)->dict:
         """Generates a prompt from a query.
 
         Args:
@@ -77,11 +79,15 @@ class Agent(BaseModel):
         Returns:
         A dictionary containing the generated prompt.
         """
-        processed_query = self.extract_json(query)
+        
+        processed_query = self.extract_json(query) if isinstance(query, str) else query
         
         if isinstance(processed_query, dict):
             if isinstance(processed_query['result'], list):
-                prompt = {'role': 'User', 'type': 'image', 'image': processed_query['result'][1]}
+                if processed_query['result'][0] == 'image':
+                    prompt = {'role': 'User', 'type': 'image', 'image': processed_query['result'][1]}
+                else:
+                    prompt = {'role': 'User', 'type': 'text', 'message': processed_query['result']}
             else:
                 prompt = {'role': 'User', 'type': 'text', 'message': processed_query['result']}
         else:
@@ -145,78 +151,29 @@ class Agent(BaseModel):
             # logger.warning(str(e))
             return response_data
     
-    # def generate_response(self, response: str)->dict:
-    #     """_summary_
-
-    #     Args:
-    #         response (str): _description_
-
-    #     Returns:
-    #         str: _description_
-    #     """
-        
-    #     self.memory.append({'AI Assistant': response})
-
-    #     try:
-    #         result = {}
-    #         response = response.strip()
-    #         for line in response.splitlines():
-    #             r_line = line.split(":")
-    #             if len(r_line) > 1:
-    #                 r_key = r_line[0].strip().rstrip('"').lstrip('"').rstrip("'").lstrip("'")
-    #                 r_value = r_line[1].strip().rstrip('"').lstrip('"').rstrip("'").lstrip("'").rstrip(",").rstrip('"')
-    #                 result[r_key] = r_value
-
-    #         if result['action']:
-    #             action_tool = self.get_tool_by_name(result['action'])
-    #             if action_tool:
-    #                 tool = action_tool['execute']
-    #                 if result['action_input']:
-    #                     output = tool(result['action_input'])
-    #                 else:
-    #                     output= tool()
-                    
-    #                 return {
-    #                     'type': 'tool_usage',
-    #                     'user_name': result['action'],
-    #                     'output': f"The answer from {result['action']} is {output}",
-    #                     'is_final': False
-    #                 }
-    #         return {
-    #             'type': 'response',
-    #             'user_name': 'ChatBot',
-    #             'output': result['final_answer'],
-    #             'is_final': True
-    #         }
-    #     except Exception as e:
-    #         logger.exception(str(e))
-    #         return {
-    #             'type': 'response',
-    #             'user_name': 'ChatBot',
-    #             'output': str(e),
-    #             'is_final': True
-    #         }
-    
     def extract_json(self, content: str) -> dict | str:
-        """Extract json content from response string
+        """
+        Extract JSON content from a response string.
 
         Args:
-            content (str): The response string to extract json from
+            content (str): The response string to extract JSON from.
 
         Returns:
-            dict|str: Result of the extraction
+            dict|str: Result of the extraction.
         """
         try:
+            # Escape special characters in the input string
+            # escaped_content = re.escape(content)
+
             # Find the start and end index of the JSON string
             start_index = content.find('{')
             end_index = content.find('}', start_index) + 1
-            
+
             # Extract the JSON string
             json_str = content[start_index:end_index]
             
             # Convert the JSON string to a Python dictionary
             json_dict = json.loads(json_str)
-            
             return json_dict
         except Exception as e:
             # logger.warning(str(e))
@@ -252,46 +209,48 @@ class Agent(BaseModel):
         """
         self.format_system_prompt()
 
-        query = input("\nUser (q to quit): ")
+        query: str|dict = input("\nUser (q to quit): ")
         while query:
             try:
-                if query.lower() in ['q', 'quit', 'exit']:
-                    print('Exiting...')
-                    sys.exit(1)
-                    
-                elif query.lower() == 'add agent':
-                        new_agent = Agent.create_agent(is_sub_agent=True, parent_id=self.id)
-                        if new_agent:
-                            self.add_sub_agent(new_agent)
-                            print(f"\nAgent {new_agent.name} added successfully!")
-                        else:
-                            print("\nError creating agent")
+                if isinstance(query, str):
+                    if query.lower() in ['q', 'quit', 'exit']:
+                        print('Exiting...')
+                        sys.exit(1)
                         
+                    elif query.lower() == 'add agent':
+                            new_agent = Agent.create_agent(is_sub_agent=True, parent_id=self.id)
+                            if new_agent:
+                                self.add_sub_agent(new_agent)
+                                print(f"\nAgent {new_agent.name} added successfully!")
+                            else:
+                                print("\nError creating agent")
+                            
+                            query = input("\nUser (q to quit): ")
+                            continue
+                    
+                    elif query.lower() == 'list agents':
+                        agents_str = "\nAvailable Agents:"
+                        agents = Agent.list_agents()
+                        sub_agents = [agent for agent in agents if agent.parent_id == self.id]
+                        for index, agent in enumerate(sub_agents):
+                            agents_str += (f"\n[{index}] {agent.name}")
+                        print(agents_str)
                         query = input("\nUser (q to quit): ")
                         continue
-                
-                elif query.lower() == 'list agents':
-                    agents_str = "\nAvailable Agents:"
-                    agents = Agent.list_agents()
-                    sub_agents = [agent for agent in agents if agent.parent_id == self.id]
-                    for index, agent in enumerate(sub_agents):
-                        agents_str += (f"\n[{index}] {agent.name}")
-                    print(agents_str)
-                    query = input("\nUser (q to quit): ")
-                    continue
                 
                 full_prompt = self.generate_prompt(query)
                 response = self.llm(full_prompt['output']) # type: ignore
                 self.llm.chat_history.append(full_prompt['output'])
+                self.llm.chat_history.append({'role': 'Assistant', 'type': 'text', 'message': response})
 
                 if self.verbose:
                     print(response)
                 
                 result: dict[Any, Any] | str = self.process_response(response)
-
+                
                 if isinstance(result, dict) and result['type'] == 'function_call_result':
                     # self.llm.chat_history.append({'role': 'Assistant', 'type': 'text', 'message': response.strip()})
-                    query = json.dumps(result)
+                    query = result
                 else:
                     print(f"\n{self.name}: {result}")
                     query = input("\nUser (q to quit): ")
@@ -300,8 +259,7 @@ class Agent(BaseModel):
                 print('Exiting...')
                 sys.exit(1)
             except Exception as e:
-                # logger.warning(str(e))
-                logger.exception(e)
+                logger.warning(str(e))
                 sys.exit(1)
 
     def start(self):

@@ -19,9 +19,13 @@ class Cohere(LLM):
     """A class for interacting with the Cohere API.
 
     Args:
-        model: The name of the Cohere model to use.
-        temperature: The temperature to use when generating text.
-        api_key: Your Cohere API key.
+        model (str): The name of the OpenAI model to use
+        temperature (float): The temperature to use when generating text
+        api_key (str): Your OpenAI API key
+        chat_history (list): Chat history
+        max_tokens (int): The maximum number of tokens to generate in the completion
+        supports_system_prompt (bool): Flag to indicate if system prompt should be supported
+        system_prompt (str): System prompt to prepend to queries
     """
     model: str = 'command-nightly'
     """model endpoint to use""" 
@@ -52,7 +56,7 @@ class Cohere(LLM):
         client = cohere.Client(api_key=self.api_key)
         response = client.chat( 
             model=self.model,
-            message=self.format_query(query['message']),
+            message=query['message'],
             temperature=self.temperature,
             chat_history=self.chat_history,
             prompt_truncation='auto',

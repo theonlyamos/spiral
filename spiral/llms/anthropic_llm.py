@@ -1,7 +1,8 @@
 from spiral.llms.base import LLM
+from spiral.utils import image_to_base64
 from typing import Any
 from dotenv import load_dotenv
-import anthropic
+from anthropic import Anthropic
 import logging
 import sys
 import os
@@ -19,9 +20,13 @@ class Claude(LLM):
     """A class for interacting with the Claude API.
 
     Args:
-        model: The name of the Claude model to use.
-        temperature: The temperature to use when generating text.
-        api_key: Your Anthropic API key.
+        model (str): The name of the OpenAI model to use
+        temperature (float): The temperature to use when generating text
+        api_key (str): Your OpenAI API key
+        chat_history (list): Chat history
+        max_tokens (int): The maximum number of tokens to generate in the completion
+        supports_system_prompt (bool): Flag to indicate if system prompt should be supported
+        system_prompt (str): System prompt to prepend to queries
     """
     model: str = 'claude-3-sonnet-20240229'
     """model endpoint to use""" 
@@ -41,58 +46,68 @@ class Claude(LLM):
     supports_system_prompt: bool = True
     """Flag to indicate if system prompt should be supported"""
     
+    is_multimodal: bool = True
+    """Whether the model is multimodal."""
+    
     def format_query(self, message: dict[str, str]) -> list:
-        """Formats a message for the Cohere API"""
-        formatted_message = self.chat_history.copy()
-        formatted_message.append(message) # type: ignore
+        """Formats a message for the Claude API.
+
+        Args:
+            message (dict[str, str]): The message to be formatted for the Claude API.
+
+        Returns:
+            list: A list of formatted messages for the Claude API.
+        """
         
-        messages = [
-            {
-                "role": "user",
-                "content": []
-            },
-            {
-                "role": "assistant",
-                "content": []
-            }
-        ]
+        formatted_message = [*self.chat_history, message]
+        
+        messages = []
         
         for fm in formatted_message:
-            new_message = {}
-            if fm['type'] == 'text': # type: ignore
-                new_message = {
-                    'type': fm['type'], # type: ignore
-                    'text': fm['message'] # type: ignore
-                }
+            if fm['type'] == 'text':
+                messages.append({
+                    "role": fm['role'].lower(),
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": fm['message']
+                        }
+                    ]
+                })
             else:
-                new_message = {
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": "image/jpeg",
-                    "data": fm['image'] # type: ignore
-                }
-            }
+                base64_image = image_to_base64(fm['image'])
+                messages.append({
+                    "role": fm['role'].lower(),
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "image/jpeg",
+                                "data": base64_image 
+                            }
+                        },
+                        {
+                            "type": "text",
+                            "text": "This is the result of the latest screenshot"
+                        }
+                    ]
+                })
             
-            if fm['role'].lower() == 'user': # type: ignore
-                messages[0]['content'].append(new_message)
-            else:
-                messages[1]['content'].append(new_message)
-
         return messages
 
-    def __call__(self, query, **kwds: Any)->list|str|None:
+    def __call__(self, query: dict, **kwds: Any)->str|None:
         """Generates a response to a query using the Claude API.
 
         Args:
-        query: The query to generate a response to.
-        kwds: Additional keyword arguments to pass to the Claude API.
+            query (dict): The query to generate a response to.
+            kwds (dict): Additional keyword arguments to pass to the Claude API.
 
         Returns:
-        A string containing the generated response.
+            str|None: A string containing the generated response.
         """
 
-        client = anthropic.Anthropic(api_key=self.api_key)
+        client = Anthropic(api_key=self.api_key)
         result = client.messages.create(
             model=self.model,
             max_tokens=self.max_tokens,
@@ -101,14 +116,4 @@ class Claude(LLM):
             messages=self.format_query(query)
         )
         
-        return result.content[0].text     
-
-if __name__ == "__main__":
-    try:
-        assistant = Claude()
-        while True:
-            message = input("\nEnter Query$ ")
-            result = assistant(message)
-            print(result)
-    except KeyboardInterrupt:
-        sys.exit(1)
+        return result.content[0].text

@@ -78,10 +78,13 @@ class LLM(BaseModel):
     A class for representing a large language model.
 
     Args:
-        model: The name of the language model to use.
-        temperature: The temperature to use when generating text.
-        api_key: The API Key of the model.
-        max_tokens: The maximum number of tokens to generate in the completion.
+        model (str): The name of the OpenAI model to use
+        temperature (float): The temperature to use when generating text
+        api_key (str): Your OpenAI API key
+        chat_history (list): Chat history
+        max_tokens (int): The maximum number of tokens to generate in the completion
+        supports_system_prompt (bool): Flag to indicate if system prompt should be supported
+        system_prompt (str): System prompt to prepend to queries
     """
 
     model: str = Field(default=None)

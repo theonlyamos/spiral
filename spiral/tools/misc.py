@@ -1,3 +1,4 @@
+import json
 import shutil
 from webbrowser import open_new_tab
 from typing import Union, Optional, Any, Tuple, Dict, List
@@ -7,6 +8,7 @@ from ..tools.tool import tool
 from pydantic import Field
 from serpapi import google_search
 from pathlib import Path
+from PIL import Image
 import pyautogui
 import requests
 import logging 
@@ -235,7 +237,7 @@ class FSBrowser(Tool):
         return 'Unable to open file'
         
     def listdir(self, path: Path):
-        return os.listdir(path)
+        return 'The content of the directory are: '+json.dumps(os.listdir(path))
     
     def create_path(self, path: Path):
         if path.is_file():
@@ -386,48 +388,54 @@ def take_screenshot():
     """Use this tool to take a screenshot of the screen.
     Example:
     User: take a screenshot
-    AI Assistant: {{
+    AI Assistant: {
         "type": "function_call",
         "function": "Take Screenshot",
         "arguments": []
-    }}"""
+    }"""
     screenshot = pyautogui.screenshot()
+    
+    # Resize the image by 50% while maintaining the aspect ratio
+    # width, height = screenshot.size
+    # new_width = int(width * 0.5)
+    # new_height = int(height * 0.5)
+    # screenshot = screenshot.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
     # Convert the screenshot to a BytesIO object
-    screenshot_bytes = io.BytesIO()
-    screenshot.save(screenshot_bytes, format='JPEG')
+    # screenshot_bytes = io.BytesIO()
+    # screenshot.save(screenshot_bytes, format='JPEG')
 
-    # Convert the BytesIO object to base64
-    screenshot_base64 = base64.b64encode(screenshot_bytes.getvalue()).decode('utf-8')
+    # # Convert the BytesIO object to base64
+    # screenshot_base64 = base64.b64encode(screenshot_bytes.getvalue()).decode('utf-8')
     
-    return ['image', screenshot_base64]
+    return ['image', screenshot]
 
-@tool
-def get_ui_elements_coordinates():
-    import cv2
-    import numpy as np
+# @tool
+# def get_ui_elements_coordinates():
+#     import cv2
+#     import numpy as np
     
-    def get_ui_element_coords(image_path, element_name):
-        # Load the image
-        image = cv2.imread(image_path)
+#     def get_ui_element_coords(image_path, element_name):
+#         # Load the image
+#         image = cv2.imread(image_path)
         
-        # Convert the image to grayscale
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+#         # Convert the image to grayscale
+#         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         
-        # Perform template matching to find the UI element
-        template = cv2.imread(f'{element_name}.png', 0)
-        res = cv2.matchTemplate(gray, template, cv2.TM_CCOEFF_NORMED)
-        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+#         # Perform template matching to find the UI element
+#         template = cv2.imread(f'{element_name}.png', 0)
+#         res = cv2.matchTemplate(gray, template, cv2.TM_CCOEFF_NORMED)
+#         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
         
-        # Get the coordinates of the matched region
-        top_left = max_loc
-        bottom_right = (top_left[0] + template.shape[1], top_left[1] + template.shape[0])
+#         # Get the coordinates of the matched region
+#         top_left = max_loc
+#         bottom_right = (top_left[0] + template.shape[1], top_left[1] + template.shape[0])
         
-        # Return the coordinates
-        return top_left, bottom_right
+#         # Return the coordinates
+#         return top_left, bottom_right
     
-    # Example usage
-    image_path = 'screenshot.png'
-    element_name = 'brave'
-    coords = get_ui_element_coords(image_path, element_name)
-    print(f'The coordinates of the {element_name} icon are: {coords}')
+#     # Example usage
+#     image_path = 'screenshot.png'
+#     element_name = 'brave'
+#     coords = get_ui_element_coords(image_path, element_name)
+#     print(f'The coordinates of the {element_name} icon are: {coords}')

@@ -99,13 +99,13 @@ def start(args: Namespace):
             assistant.llm = platform
             assistant.name = args.name
             assistant.add_tool(take_screenshot())
-            assistant.add_tool(Calculator())
-            assistant.add_tool(YoutubePlayer())
-            assistant.add_tool(WorldNews())
-            assistant.add_tool(FSBrowser())
-            assistant.add_tool(PythonREPL())
-            assistant.add_tool(InternetBrowser())
-            assistant.add_tool(SearchTool())
+            # assistant.add_tool(Calculator())
+            # assistant.add_tool(YoutubePlayer())
+            # assistant.add_tool(WorldNews())
+            # assistant.add_tool(FSBrowser())
+            # assistant.add_tool(PythonREPL())
+            # assistant.add_tool(InternetBrowser())
+            # assistant.add_tool(SearchTool())
             assistant.start()
     except Exception as e:
         logging.error(str(e))
