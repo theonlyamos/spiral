@@ -116,7 +116,6 @@ class Agent(BaseModel):
     
     def process_response(self, response: str)-> Union[dict, str]:
         response = response.strip()
-        # response = response.replace("\\", "\\\\")
         response_data = self.extract_json(response)
         
         try:
@@ -147,7 +146,6 @@ class Agent(BaseModel):
             else:
                 raise Exception('Not a json object')
         except Exception as e:
-            logger.exception(e)
             # logger.warning(str(e))
             return response_data
     
@@ -259,7 +257,7 @@ class Agent(BaseModel):
                 print('Exiting...')
                 sys.exit(1)
             except Exception as e:
-                # logger.warning(str(e))
+                logger.warning(str(e))
                 sys.exit(1)
 
     def start(self):

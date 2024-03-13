@@ -1,5 +1,6 @@
 from openai import OpenAI as OpenAILLM
 from spiral.llms.base import LLM
+from spiral.utils import image_to_base64
 from typing import Any, Optional
 from dotenv import load_dotenv
 import logging
@@ -40,6 +41,9 @@ class OpenAI(LLM):
     api_key: str = os.getenv('OPENAI_API_KEY', '')
     """OpenAI API key""" 
     
+    max_tokens: int = 4000
+    """The maximum number of tokens to generate in the completion.""" 
+    
     chat_history: list[str] = []
     """Chat history"""
     
@@ -48,6 +52,50 @@ class OpenAI(LLM):
     
     system_prompt: str = ""
     """System prompt to prepend to queries"""
+    
+    def format_query(self, message: dict[str, str]) -> list:
+        """Formats a message for the Claude API.
+
+        Args:
+            message (dict[str, str]): The message to be formatted for the Claude API.
+
+        Returns:
+            list: A list of formatted messages for the Claude API.
+        """
+        
+        formatted_message = [*self.chat_history, message]
+        
+        messages = []
+        
+        for fm in formatted_message:
+            if fm['type'] == 'text':
+                messages.append({
+                    "role": fm['role'].lower(),
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": fm['message']
+                        }
+                    ]
+                })
+            else:
+                base64_image = image_to_base64(fm['image'])
+                self.model = self.vision_model
+                messages.append({
+                    "role": fm['role'].lower(),
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "This is the result of the latest screenshot"
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": f"data:image/jpeg;base64,{base64_image}"
+                        }
+                    ]
+                })
+            
+        return messages
 
     def __call__(self, query: dict, **kwds: dict)->Optional[str]:
         """Generates a response to a query using the OpenAI API.
@@ -61,13 +109,15 @@ class OpenAI(LLM):
         """
 
         client = OpenAILLM(api_key=self.api_key)
+        formatted_messages = self.format_query(query)
         response = client.chat.completions.create(
             model=self.model,
             messages=[
                 {"role": "system", "content": self.system_prompt},
-                {"role": "user", "content": query}
+                *formatted_messages
             ],
-            temperature=self.temperature
+            temperature=self.temperature,
+            max_tokens=self.max_tokens
         )
             
         return response.choices[0].message.content
